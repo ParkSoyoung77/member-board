@@ -1,4 +1,3 @@
-# 1. FastAPI Deployment & Service
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -31,9 +30,7 @@ spec:
       port: 8000
       targetPort: 8000
   type: NodePort
-
 ---
-# 2. Nginx Deployment & Service
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -66,9 +63,7 @@ spec:
       port: 80
       targetPort: 80
   type: NodePort
-
 ---
-# 3. Ingress (ALB)
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -77,9 +72,7 @@ metadata:
     kubernetes.io/ingress.class: alb
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
-    alb.ingress.kubernetes.io/certificate-arn: "ARN_VALUE"
-    alb.ingress.kubernetes.io/ssl-redirect: '443'
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
 spec:
   ingressClassName: alb
   rules:
