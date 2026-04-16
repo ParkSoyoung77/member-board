@@ -1,0 +1,35 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+metadata:
+  name: st7-cluster-basic-v1 # 클러스터 이름
+  region: ap-south-2         # 클러스터가 생성될 AWS리전(하이데라바드)
+iam:
+  withOIDC: true  # OIDC 공급자 활성화하여 클러스터에서 IAM 역할을 서비스 계정에 연결할 수 있도록 설정
+
+vpc:
+  clusterEndpoints:
+    publicAccess: true    # 외부에서 eksctl/kubectl로 API 서버에 접근 가능하도록 설정
+    privateAccess: true   # VPC 내부에서만 API 서버에 접근 가능하도록 설정(내부 마스터-워커노드 간 통신)
+    # 핵심: 다른 VPC와 겹치지 않는 CIDR 대역 사용
+  cidr: 10.10.0.0/16
+  nat:
+    # EIP 한도 문제를 방지하기 위해 NAT 게이트웨이를 1개만 생성
+    gateway: Single
+
+managedNodeGroups:  # 워커 노드 설정
+  - name: ng-1
+    instanceType: t3.medium
+    desiredCapacity: 1  # 클러스터 생성 시, 1개의 노드로 시작하도록 설정
+    minSize: 1    # 노드 그룹의 최소 크기를 1로 설정
+    maxSize: 2    # 노드 그룹의 최대 크기를 2로 설정
+    privateNetworking: true # 프라이빗 서브넷에 노드 그룹을 생성하도록 설정
+    # 노드들이 프라이빗 서브넷 3곳에 골고루 배치되도록 서브넷 지정
+    ssh:
+      allow: true # SSH 액세스 허용
+      publicKeyName: st7-key # SSH 액세스에 사용할 EC2 키
+    iam:
+      withAddonPolicies:
+        autoScaler: true   # Cluster Autoscaler에 필요한 IAM 정책 추가
+        imageBuilder: true # EKS 노드 이미지 빌더(AMI 생성,관리 자동화 서비스)에 필요한 IAM 정책 추가
+        cloudWatch: true   # CloudWatch에 필요한 IAM 정책 추가
+        albIngress: true   # ALB Ingress Controller에 필요한 IAM 정책 추가
