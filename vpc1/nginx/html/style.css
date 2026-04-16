@@ -1,0 +1,106 @@
+/* 기본 설정 */
+body { 
+    font-family: 'Pretendard', -apple-system, sans-serif; 
+    margin: 0; 
+    background: #f8f9fa; 
+    color: #333; 
+    line-height: 1.6;
+}
+
+/* [1] 상단 고정 네비게이션 바 */
+.navbar {
+    background: #333;
+    padding: 15px 0;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+.navbar-container {
+    max-width: 1100px;
+    margin: auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px;
+}
+.nav-logo {
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 1.2rem;
+}
+.nav-links {
+    display: flex;
+    gap: 20px;
+}
+.nav-links a {
+    color: #ccc;
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: 0.3s;
+}
+.nav-links a:hover {
+    color: white;
+}
+
+/* [2] 메인 히어로 섹션 */
+.hero { 
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); 
+    color: white; 
+    padding: 80px 20px; 
+    text-align: center; 
+}
+.hero h1 { font-size: 2.8rem; margin: 0 0 10px 0; }
+.hero p { opacity: 0.9; font-size: 1.1rem; }
+
+/* [3] 컨텐츠 컨테이너 및 섹션 타이틀 */
+.main-container { 
+    max-width: 1100px; 
+    margin: -40px auto 50px; 
+    padding: 0 20px; 
+}
+.section-title { 
+    margin: 40px 0 20px; 
+    font-size: 1.5rem; 
+    font-weight: bold; 
+    color: #444; 
+    display: flex; 
+    align-items: center; 
+}
+.section-title::before { 
+    content: ""; width: 4px; height: 20px; background: #007bff; margin-right: 10px; border-radius: 2px; 
+}
+
+/* [4] 카드 그리드 시스템 */
+.grid-container { 
+    display: grid; 
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
+    gap: 20px; 
+}
+.card { 
+    background: white; 
+    padding: 30px; 
+    border-radius: 12px; 
+    box-shadow: 0 8px 20px rgba(0,0,0,0.06); 
+    text-align: center; 
+    transition: 0.3s; 
+    text-decoration: none; 
+    color: inherit; 
+    border: 1px solid #eee; 
+}
+.card:hover { 
+    transform: translateY(-7px); 
+    box-shadow: 0 12px 25px rgba(0,0,0,0.1); 
+    border-color: #007bff; 
+}
+.card i { font-size: 32px; color: #007bff; margin-bottom: 15px; display: block; }
+.card h3 { margin: 10px 0; font-size: 1.25rem; }
+.card p { color: #777; font-size: 0.9rem; }
+
+/* 유승님 전용 카드 색상 */
+.management-card i { color: #28a745; }
+.management-card:hover { border-color: #28a745; }
+
+/* 푸터 */
+footer { text-align: center; padding: 40px; color: #aaa; font-size: 0.85rem; }

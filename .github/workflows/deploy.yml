@@ -1,0 +1,79 @@
+name: EKS & EC2(SSM) Integrated CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-2
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # 1. FastAPI 이미지 빌드 및 푸시
+      - name: Build and Push FastAPI Image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPO_FASTAPI: ${{ secrets.ECR_REPOSITORY_FASTAPI }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          # 변수명을 맞춰서 수정했습니다.
+          docker build -t $ECR_REGISTRY/$ECR_REPO_FASTAPI:latest -t $ECR_REGISTRY/$ECR_REPO_FASTAPI:$IMAGE_TAG ./vpc2/fastapi
+          docker push $ECR_REGISTRY/$ECR_REPO_FASTAPI:latest
+          docker push $ECR_REGISTRY/$ECR_REPO_FASTAPI:$IMAGE_TAG
+
+      # 2. Nginx 이미지 빌드 및 푸시
+      - name: Build and Push Nginx Image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPO_NGINX: ${{ secrets.ECR_REPOSITORY_NGINX }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPO_NGINX:latest -t $ECR_REGISTRY/$ECR_REPO_NGINX:$IMAGE_TAG ./vpc1/nginx
+          docker push $ECR_REGISTRY/$ECR_REPO_NGINX:latest
+          docker push $ECR_REGISTRY/$ECR_REPO_NGINX:$IMAGE_TAG
+
+      # 3. AWS SSM을 통한 EC2 배포
+      - name: Deploy to EC2 using SSM
+        run: |
+          aws ssm send-command \
+            --document-name "AWS-RunShellScript" \
+            --targets "Key=tag:Name,Values=${{ secrets.ASG_TAG_VALUE }}" \
+            --region ap-south-2 \
+            --parameters '{
+                "commands": [
+                  "aws ecr get-login-password --region ap-south-2 | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}",
+                  "docker pull ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY_FASTAPI }}:latest",
+                  "docker pull ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY_NGINX }}:latest",
+                  "docker stop fastapi-container nginx-container || true",
+                  "docker rm fastapi-container nginx-container || true",
+                  "docker run -d --name fastapi-container -p 8000:8000 ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY_FASTAPI }}:latest",
+                  "docker run -d --name nginx-container -p 80:80 ${{ secrets.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY_NGINX }}:latest"
+                ]
+              }'
+
+      # 4. EKS 배포 및 토큰 치환
+      - name: Update Manifest and Deploy to EKS
+        run: |
+          # YAML 내 보안 토큰 치환 (ARN 및 계정 ID)
+          sed -i "s/<AWS_ACCOUNT_ID>/${{ secrets.AWS_ACCOUNT_ID }}/g" k8s/deployment-svc.yaml
+          sed -i "s|ARN_VALUE|${{ secrets.ACM_ARN }}|g" k8s/deployment-svc.yaml
+          
+          # 클러스터 이름 변수 적용
+          aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }} --region ap-south-2
+          
+          kubectl apply -f k8s/deployment-svc.yaml
+          kubectl rollout restart deployment/fastapi-deployment
+          kubectl rollout restart deployment/nginx-deployment
