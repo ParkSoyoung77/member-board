@@ -1,16 +1,22 @@
-name: EKS & EC2(SSM) Integrated CI/CD Pipeline
+name: EKS & Multi-Registry Integrated CI/CD
 
 on:
   push:
     branches: [ "main" ]
 
 jobs:
-  build-and-deploy:
+  build-and-push:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
+      # 1. AWS 자격 증명 설정
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -18,43 +24,57 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-south-2
 
+      # 2. 레지스트리 로그인 (ECR & Docker Hub)
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # 1. FastAPI 이미지 빌드 및 푸시
-      - name: Build and Push FastAPI Image
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # 3. 이미지 빌드 및 양쪽 레지스트리 푸시
+      - name: Build and Push Images
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPO_FASTAPI: ${{ secrets.ECR_REPOSITORY_FASTAPI }}
+          DOCKER_USER: ${{ secrets.DOCKER_USERNAME }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          # 변수명을 맞춰서 수정했습니다.
-          docker build -t $ECR_REGISTRY/$ECR_REPO_FASTAPI:latest -t $ECR_REGISTRY/$ECR_REPO_FASTAPI:$IMAGE_TAG ./eks/fastapi
-          docker push $ECR_REGISTRY/$ECR_REPO_FASTAPI:latest
-          docker push $ECR_REGISTRY/$ECR_REPO_FASTAPI:$IMAGE_TAG
+          # FastAPI 빌드 및 푸시
+          docker build -t $ECR_REGISTRY/${{ secrets.ECR_REPOSITORY_FASTAPI }}:latest \
+                       -t $ECR_REGISTRY/${{ secrets.ECR_REPOSITORY_FASTAPI }}:$IMAGE_TAG \
+                       -t $DOCKER_USER/${{ secrets.DOCKER_REPOSITORY_FASTAPI }}:latest ./eks/fastapi
+          
+          docker push $ECR_REGISTRY/${{ secrets.ECR_REPOSITORY_FASTAPI }} --all-tags
+          docker push $DOCKER_USER/${{ secrets.DOCKER_REPOSITORY_FASTAPI }}:latest
 
-      # 2. Nginx 이미지 빌드 및 푸시
-      - name: Build and Push Nginx Image
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPO_NGINX: ${{ secrets.ECR_REPOSITORY_NGINX }}
-          IMAGE_TAG: ${{ github.sha }}
-        run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPO_NGINX:latest -t $ECR_REGISTRY/$ECR_REPO_NGINX:$IMAGE_TAG ./eks/nginx
-          docker push $ECR_REGISTRY/$ECR_REPO_NGINX:latest
-          docker push $ECR_REGISTRY/$ECR_REPO_NGINX:$IMAGE_TAG
+          # Nginx 빌드 및 푸시
+          docker build -t $ECR_REGISTRY/${{ secrets.ECR_REPOSITORY_NGINX }}:latest \
+                       -t $ECR_REGISTRY/${{ secrets.ECR_REPOSITORY_NGINX }}:$IMAGE_TAG \
+                       -t $DOCKER_USER/${{ secrets.DOCKER_REPOSITORY_NGINX }}:latest ./eks/nginx
+          
+          docker push $ECR_REGISTRY/${{ secrets.ECR_REPOSITORY_NGINX }} --all-tags
+          docker push $DOCKER_USER/${{ secrets.DOCKER_REPOSITORY_NGINX }}:latest
 
-      # 3. AWS SSM을 통한 EC2 배포
-      - name: Deploy to EKS
+      # 4. K8s 매니페스트 업데이트 (Secrets 적용)
+      - name: Update Kubernetes Manifests
         run: |
           sed -i "s|DB_HOST_VALUE|${{ secrets.DB_HOST }}|g" k8s/deployment-svc.yaml
           sed -i "s|DB_USER_VALUE|${{ secrets.DB_USER }}|g" k8s/deployment-svc.yaml
           sed -i "s|DB_PASS_VALUE|${{ secrets.DB_PASS }}|g" k8s/deployment-svc.yaml
           sed -i "s|DB_NAME_VALUE|${{ secrets.DB_NAME }}|g" k8s/deployment-svc.yaml
-          
           sed -i "s|ACM_ARN_VALUE|${{ secrets.ACM_ARN }}|g" k8s/deployment-svc.yaml
           sed -i "s|<AWS_ACCOUNT_ID>|${{ secrets.AWS_ACCOUNT_ID }}|g" k8s/deployment-svc.yaml
-    
-          aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }} --region ap-south-2
-          kubectl apply -f k8s/deployment-svc.yaml
+
+          sed -i "s|:latest|:${{ github.sha }}|g" k8s/deployment-svc.yaml
+
+      # # 5. GitOps 배포: 수정된 파일을 다시 Push (ArgoCD가 이걸 보고 배포함)
+      # - name: Commit and Push to Git
+      #   run: |
+      #     git config --global user.name "github-actions[bot]"
+      #     git config --global user.email "github-actions[bot]@users.noreply.github.com"
+      #     git add k8s/deployment-svc.yaml
+      #     git commit -m "chore: update deployment manifests for GitOps [skip ci]"
+      #     git push
