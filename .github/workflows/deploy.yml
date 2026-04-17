@@ -45,27 +45,24 @@ jobs:
       - name: Build and Push Images
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          # [중요] 아래 두 줄이 누락되었거나 이름이 다르면 에러가 납니다!
-          ECR_REPO_FASTAPI: ${{ secrets.ECR_REPOSITORY_FASTAPI }}
-          ECR_REPO_NGINX: ${{ secrets.ECR_REPOSITORY_NGINX }}
+          ECR_REPOSITORY_FASTAPI: ${{ secrets.ECR_REPOSITORY_FASTAPI }}
+          ECR_REPOSITORY_NGINX: ${{ secrets.ECR_REPOSITORY_NGINX }}
           DOCKER_USER: ${{ secrets.DOCKER_USERNAME }}
         run: |
           SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
           
-          # FastAPI 빌드 (변수명 $ECR_REPO_FASTAPI가 위 env와 일치해야 함)
-          docker build -t $ECR_REGISTRY/$ECR_REPO_FASTAPI:latest \
-                       -t $ECR_REGISTRY/$ECR_REPO_FASTAPI:v$SHORT_SHA \
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_FASTAPI:latest \
+                       -t $ECR_REGISTRY/$ECR_REPOSITORY_FASTAPI:v$SHORT_SHA \
                        -t $DOCKER_USER/${{ secrets.DOCKER_REPOSITORY_FASTAPI }}:latest ./eks/fastapi
           
-          docker push $ECR_REGISTRY/$ECR_REPO_FASTAPI --all-tags
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY_FASTAPI --all-tags
           docker push $DOCKER_USER/${{ secrets.DOCKER_REPOSITORY_FASTAPI }}:latest
 
-          # Nginx 빌드 (변수명 $ECR_REPO_NGINX가 위 env와 일치해야 함)
-          docker build -t $ECR_REGISTRY/$ECR_REPO_NGINX:latest \
-                       -t $ECR_REGISTRY/$ECR_REPO_NGINX:v$SHORT_SHA \
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_NGINX:latest \
+                       -t $ECR_REGISTRY/$ECR_REPOSITORY_NGINX:v$SHORT_SHA \
                        -t $DOCKER_USER/${{ secrets.DOCKER_REPOSITORY_NGINX }}:latest ./eks/nginx
           
-          docker push $ECR_REGISTRY/$ECR_REPO_NGINX --all-tags
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY_NGINX --all-tags
           docker push $DOCKER_USER/${{ secrets.DOCKER_REPOSITORY_NGINX }}:latest
 
       # 4. K8s 매니페스트 업데이트 (Secrets 및 이미지 태그 치환)
