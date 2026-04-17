@@ -26,7 +26,162 @@ HTML_HEAD = """
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SY & YS CLOUD SERVICE</title>
-    <link rel="stylesheet" href="https://www.sy99.cloud/style.css">
+    <style>
+        /* [기본 설정] */
+        body { 
+            font-family: 'Pretendard', -apple-system, sans-serif; 
+            margin: 0; 
+            background: #f8f9fa; 
+            color: #333; 
+            line-height: 1.6;
+        }
+
+        /* [1] 상단 고정 네비게이션 바 */
+        .navbar {
+            background: #333;
+            padding: 15px 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .navbar-container {
+            max-width: 1100px;
+            margin: auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+        }
+        .nav-logo {
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+        .nav-links {
+            display: flex;
+            gap: 20px;
+        }
+        .nav-links a {
+            color: #ccc;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: 0.3s;
+        }
+        .nav-links a:hover {
+            color: white;
+        }
+
+        /* [2] 메인 히어로 섹션 */
+        .hero { 
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); 
+            color: white; 
+            padding: 80px 20px; 
+            text-align: center; 
+        }
+        .hero h1 { font-size: 2.8rem; margin: 0 0 10px 0; }
+        .hero p { opacity: 0.9; font-size: 1.1rem; }
+
+        /* [3] 컨텐츠 컨테이너 및 섹션 타이틀 */
+        .main-container { 
+            max-width: 1100px; 
+            margin: -40px auto 50px; 
+            padding: 0 20px; 
+        }
+        .section-title { 
+            margin: 40px 0 20px; 
+            font-size: 1.5rem; 
+            font-weight: bold; 
+            color: #444; 
+            display: flex; 
+            align-items: center; 
+        }
+        .section-title::before { 
+            content: ""; width: 4px; height: 20px; background: #007bff; margin-right: 10px; border-radius: 2px; 
+        }
+
+        /* [4] 카드 그리드 시스템 */
+        .grid-container { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
+            gap: 20px; 
+        }
+        .card { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 12px; 
+            box-shadow: 0 8px 20px rgba(0,0,0,0.06); 
+            text-align: center; 
+            transition: 0.3s; 
+            text-decoration: none; 
+            color: inherit; 
+            border: 1px solid #eee; 
+            display: block; /* 링크 클릭 영역 확보 */
+        }
+        .card:hover { 
+            transform: translateY(-7px); 
+            box-shadow: 0 12px 25px rgba(0,0,0,0.1); 
+            border-color: #007bff; 
+        }
+        .card i { font-size: 32px; color: #007bff; margin-bottom: 15px; display: block; }
+        .card h3 { margin: 10px 0; font-size: 1.25rem; }
+        .card p { color: #777; font-size: 0.9rem; }
+
+        /* [5] 게시판 공통 디자인 (추가) */
+        .content-card {
+            background: white;
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            text-align: left;
+        }
+        th { background: #fbfbfb; font-weight: bold; }
+        
+        /* 버튼 공통 */
+        .btn {
+            padding: 10px 20px;
+            border-radius: 6px;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 0.9rem;
+            cursor: pointer;
+            border: none;
+            transition: 0.2s;
+        }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn:hover { opacity: 0.85; }
+
+        /* 유승님 전용 카드 색상 */
+        .management-card i { color: #28a745; }
+        .management-card:hover { border-color: #28a745; }
+
+        /* 푸터 */
+        footer { text-align: center; padding: 40px; color: #aaa; font-size: 0.85rem; }
+        
+        /* 입력 폼 스타일 */
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-sizing: border-box;
+        }
+    </style>
 </head>
 """
 
