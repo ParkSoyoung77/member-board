@@ -15,18 +15,18 @@ spec:
     spec:
       containers:
       - name: fastapi
-        image: <AWS_ACCOUNT_ID>.dkr.ecr.ap-south-2.amazonaws.com/st7/fastapi:latest
+        image: 458894893383.dkr.ecr.ap-south-2.amazonaws.com/st7/fastapi:v8d18eb5
         ports:
         - containerPort: 8000
         env:
         - name: DB_HOST
-          value: "DB_HOST_VALUE"
+          value: "st8-project-rds.c1ic4em0wnuf.ap-south-2.rds.amazonaws.com"
         - name: DB_USER
-          value: "DB_USER_VALUE"
+          value: "admin"
         - name: DB_PASS
-          value: "DB_PASS_VALUE"
+          value: "jus09194612"
         - name: DB_NAME
-          value: "DB_NAME_VALUE"
+          value: "st8db"
 ---
 apiVersion: v1
 kind: Service
@@ -58,7 +58,7 @@ spec:
     spec:
       containers:
       - name: nginx
-        image: <AWS_ACCOUNT_ID>.dkr.ecr.ap-south-2.amazonaws.com/st7/nginx:latest
+        image: 458894893383.dkr.ecr.ap-south-2.amazonaws.com/st7/nginx:v8d18eb5
         ports:
         - containerPort: 80
 ---
@@ -89,7 +89,7 @@ metadata:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
-    alb.ingress.kubernetes.io/certificate-arn: "ACM_ARN_VALUE"
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:ap-south-2:458894893383:certificate/399ca3dd-d361-4e90-975c-67124b6fbcac"
     alb.ingress.kubernetes.io/ssl-redirect: '443'
 spec:
   ingressClassName: alb
