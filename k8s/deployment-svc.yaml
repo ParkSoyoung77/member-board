@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: fastapi-deployment
+  namespace: member-board
 spec:
   replicas: 2
   selector:
@@ -31,6 +32,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: fastapi-service
+  namespace: member-board
 spec:
   selector:
     app: fastapi
@@ -43,6 +45,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: nginx-deployment
+  namespace: member-board
 spec:
   replicas: 1
   selector:
@@ -63,6 +66,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: nginx-service
+  namespace: member-board
 spec:
   type: NodePort
   selector:
@@ -77,13 +81,11 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: sy-ingress
+  namespace: member-board
   annotations:
     kubernetes.io/ingress.class: alb
-    # [추가] 그룹화 설정: 다른 인그레스 파일과 이 이름을 똑같이 맞추면 ALB 하나를 공유합니다.
     alb.ingress.kubernetes.io/group.name: "project-group"
-    # [추가] AWS ALB 리소스 태그 설정: AWS 콘솔에서 보여질 이름과 정보를 지정합니다.
     alb.ingress.kubernetes.io/tags: "Name=Integrated-ALB,Project=Cloud-Board,Owner=st7"
-    
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'

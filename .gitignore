@@ -21,4 +21,5 @@ aws_config/
 /dist
 /build
 /node_modules
-/coverage
+/coverageid_ed25519_argocd
+id_ed25519_argocd.pub
