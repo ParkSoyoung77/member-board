@@ -4,6 +4,11 @@ on:
   push:
     branches: [ "main" ]
 
+# 동일 워크플로우 동시 실행 시 이전 작업 취소하여 충돌 방지
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
@@ -14,7 +19,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # Git 로그 전체를 가져와 rebase 시 충돌 방지
 
       # 1. AWS 자격 증명 설정
       - name: Configure AWS Credentials
@@ -42,25 +47,32 @@ jobs:
           DOCKER_USER: ${{ secrets.DOCKER_USERNAME }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          # FastAPI 빌드 및 푸시
+          # 짧은 SHA 값 추출 (7자리)
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          echo "Building and Pushing with tag: v$SHORT_SHA"
+
+          # FastAPI 빌드 및 푸시 (ECR: latest & SHA / DockerHub: latest)
           docker build -t $ECR_REGISTRY/${{ secrets.ECR_REPOSITORY_FASTAPI }}:latest \
-                       -t $ECR_REGISTRY/${{ secrets.ECR_REPOSITORY_FASTAPI }}:$IMAGE_TAG \
+                       -t $ECR_REGISTRY/${{ secrets.ECR_REPOSITORY_FASTAPI }}:v$SHORT_SHA \
                        -t $DOCKER_USER/${{ secrets.DOCKER_REPOSITORY_FASTAPI }}:latest ./eks/fastapi
           
           docker push $ECR_REGISTRY/${{ secrets.ECR_REPOSITORY_FASTAPI }} --all-tags
           docker push $DOCKER_USER/${{ secrets.DOCKER_REPOSITORY_FASTAPI }}:latest
 
-          # Nginx 빌드 및 푸시
+          # Nginx 빌드 및 푸시 (ECR: latest & SHA / DockerHub: latest)
           docker build -t $ECR_REGISTRY/${{ secrets.ECR_REPOSITORY_NGINX }}:latest \
-                       -t $ECR_REGISTRY/${{ secrets.ECR_REPOSITORY_NGINX }}:$IMAGE_TAG \
+                       -t $ECR_REGISTRY/${{ secrets.ECR_REPOSITORY_NGINX }}:v$SHORT_SHA \
                        -t $DOCKER_USER/${{ secrets.DOCKER_REPOSITORY_NGINX }}:latest ./eks/nginx
           
           docker push $ECR_REGISTRY/${{ secrets.ECR_REPOSITORY_NGINX }} --all-tags
           docker push $DOCKER_USER/${{ secrets.DOCKER_REPOSITORY_NGINX }}:latest
 
-      # 4. K8s 매니페스트 업데이트 (Secrets 적용)
+      # 4. K8s 매니페스트 업데이트 (Secrets 및 이미지 태그 치환)
       - name: Update Kubernetes Manifests
         run: |
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+
+          # 1. 인프라 정보 치환
           sed -i "s|DB_HOST_VALUE|${{ secrets.DB_HOST }}|g" k8s/deployment-svc.yaml
           sed -i "s|DB_USER_VALUE|${{ secrets.DB_USER }}|g" k8s/deployment-svc.yaml
           sed -i "s|DB_PASS_VALUE|${{ secrets.DB_PASS }}|g" k8s/deployment-svc.yaml
@@ -68,13 +80,27 @@ jobs:
           sed -i "s|ACM_ARN_VALUE|${{ secrets.ACM_ARN }}|g" k8s/deployment-svc.yaml
           sed -i "s|<AWS_ACCOUNT_ID>|${{ secrets.AWS_ACCOUNT_ID }}|g" k8s/deployment-svc.yaml
 
-          sed -i "s|:latest|:${{ github.sha }}|g" k8s/deployment-svc.yaml
+          # 2. 이미지 태그를 :latest에서 :vSHORT_SHA로 치환
+          # 정규표현식을 활용해 v로 시작하는 기존 태그가 있다면 함께 업데이트합니다.
+          sed -i "s|:latest|:v$SHORT_SHA|g" k8s/deployment-svc.yaml
+          # 만약 이미 v000000 형태로 되어있다면 아래 구문이 작동합니다.
+          sed -i "s|:v[0-9a-f]\{7\}|:v$SHORT_SHA|g" k8s/deployment-svc.yaml
 
-      # # 5. GitOps 배포: 수정된 파일을 다시 Push (ArgoCD가 이걸 보고 배포함)
+      # 5. GitOps 배포: 변경사항이 있을 때만 다시 Push
       - name: Commit and Push to Git
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add k8s/deployment-svc.yaml
-          git commit -m "chore: update deployment manifests for GitOps [skip ci]"
-          git push
+
+          # 스테이징된 변경사항이 있는지 확인
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+            git commit -m "Auto-deploy: update manifests to v$SHORT_SHA [skip ci]"
+            
+            # 최신 상태 반영 후 푸시 (rebase 전략)
+            git pull --rebase origin main
+            git push origin main
+          fi
