@@ -30,7 +30,7 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
         run: |
           # 변수명을 맞춰서 수정했습니다.
-          docker build -t $ECR_REGISTRY/$ECR_REPO_FASTAPI:latest -t $ECR_REGISTRY/$ECR_REPO_FASTAPI:$IMAGE_TAG ./vpc2/fastapi
+          docker build -t $ECR_REGISTRY/$ECR_REPO_FASTAPI:latest -t $ECR_REGISTRY/$ECR_REPO_FASTAPI:$IMAGE_TAG ./eks/fastapi
           docker push $ECR_REGISTRY/$ECR_REPO_FASTAPI:latest
           docker push $ECR_REGISTRY/$ECR_REPO_FASTAPI:$IMAGE_TAG
 
@@ -41,39 +41,14 @@ jobs:
           ECR_REPO_NGINX: ${{ secrets.ECR_REPOSITORY_NGINX }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPO_NGINX:latest -t $ECR_REGISTRY/$ECR_REPO_NGINX:$IMAGE_TAG ./vpc1/nginx
+          docker build -t $ECR_REGISTRY/$ECR_REPO_NGINX:latest -t $ECR_REGISTRY/$ECR_REPO_NGINX:$IMAGE_TAG ./eks/nginx
           docker push $ECR_REGISTRY/$ECR_REPO_NGINX:latest
           docker push $ECR_REGISTRY/$ECR_REPO_NGINX:$IMAGE_TAG
 
       # 3. AWS SSM을 통한 EC2 배포
-      - name: Deploy to EC2 using SSM
+      - name: Deploy to EKS
         run: |
-          aws ssm send-command \
-            --document-name "AWS-RunShellScript" \
-            --targets "Key=tag:Name,Values=${{ secrets.ASG_TAG_VALUE }}" \
-            --region ap-south-2 \
-            --parameters '{
-                "commands": [
-                  "aws ecr get-login-password --region ap-south-2 | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}",
-                  "docker pull ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY_FASTAPI }}:latest",
-                  "docker pull ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY_NGINX }}:latest",
-                  "docker stop fastapi-container nginx-container || true",
-                  "docker rm fastapi-container nginx-container || true",
-                  "docker run -d --name fastapi-container -p 8000:8000 ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY_FASTAPI }}:latest",
-                  "docker run -d --name nginx-container -p 80:80 ${{ secrets.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY_NGINX }}:latest"
-                ]
-              }'
-
-      # 4. EKS 배포 및 토큰 치환
-      - name: Update Manifest and Deploy to EKS
-        run: |
-          # YAML 내 보안 토큰 치환 (ARN 및 계정 ID)
           sed -i "s/<AWS_ACCOUNT_ID>/${{ secrets.AWS_ACCOUNT_ID }}/g" k8s/deployment-svc.yaml
-          sed -i "s|ARN_VALUE|${{ secrets.ACM_ARN }}|g" k8s/deployment-svc.yaml
           
-          # 클러스터 이름 변수 적용
           aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }} --region ap-south-2
-          
           kubectl apply -f k8s/deployment-svc.yaml
-          kubectl rollout restart deployment/fastapi-deployment
-          kubectl rollout restart deployment/nginx-deployment

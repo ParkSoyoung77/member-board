@@ -29,7 +29,6 @@ spec:
     - protocol: TCP
       port: 8000
       targetPort: 8000
-  type: NodePort
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -62,7 +61,6 @@ spec:
     - protocol: TCP
       port: 80
       targetPort: 80
-  type: NodePort
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -80,16 +78,9 @@ spec:
       http:
         paths:
           - path: /
-            pathType: Exact
+            pathType: Prefix
             backend:
               service:
                 name: nginx-service
                 port:
                   number: 80
-          - path: /board
-            pathType: Prefix
-            backend:
-              service:
-                name: fastapi-service
-                port:
-                  number: 8000
