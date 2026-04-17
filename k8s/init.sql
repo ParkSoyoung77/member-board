@@ -1,0 +1,10 @@
+CREATE TABLE posts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL COMMENT '글 제목',
+    content TEXT NOT NULL COMMENT '글 내용',
+    author VARCHAR(50) NOT NULL DEFAULT '익명' COMMENT '작성자 이름',
+    password VARCHAR(255) NOT NULL COMMENT '수정/삭제용 비밀번호',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '작성일자',
+    member_id INT DEFAULT NULL,
+    CONSTRAINT fk_member FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
