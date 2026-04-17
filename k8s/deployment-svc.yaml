@@ -88,7 +88,28 @@ spec:
     - host: "www.sy99.cloud"
       http:
         paths:
+          # 1. 메인 화면 (index.html) 및 정적 파일
           - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nginx-service
+                port:
+                  number: 80
+
+          # 2. 게시판 서비스 (FastAPI 연결)
+          # Nginx의 location /board/ 설정을 태우기 위해 nginx-service로 전달
+          - path: /board
+            pathType: Prefix
+            backend:
+              service:
+                name: nginx-service
+                port:
+                  number: 80
+
+          # 3. 회원 관리 서비스 (유승님 노드 연결)
+          # Nginx의 location /management 설정을 태우기 위해 nginx-service로 전달
+          - path: /management
             pathType: Prefix
             backend:
               service:
