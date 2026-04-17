@@ -52,6 +52,8 @@ jobs:
           sed -i "s|DB_USER_VALUE|${{ secrets.DB_USER }}|g" k8s/deployment-svc.yaml
           sed -i "s|DB_PASS_VALUE|${{ secrets.DB_PASS }}|g" k8s/deployment-svc.yaml
           sed -i "s|DB_NAME_VALUE|${{ secrets.DB_NAME }}|g" k8s/deployment-svc.yaml
+          
+          sed -i "s|ACM_ARN_VALUE|${{ secrets.ACM_ARN }}|g" k8s/deployment-svc.yaml
           sed -i "s|<AWS_ACCOUNT_ID>|${{ secrets.AWS_ACCOUNT_ID }}|g" k8s/deployment-svc.yaml
     
           aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }} --region ap-south-2
