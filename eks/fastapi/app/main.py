@@ -1,15 +1,13 @@
 import os
-from dotenv import load_dotenv # .env 파일 로드를 위해 필요
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Form, Request
 from fastapi.responses import HTMLResponse
 import pymysql
 
 app = FastAPI()
 
-# .env 파일 읽기 (이게 실행되어야 os.getenv가 작동해요)
 load_dotenv()
 
-# 환경 변수 사용
 DB_CONFIG = {
     "host": os.getenv("DB_HOST"),
     "user": os.getenv("DB_USER"),
@@ -22,17 +20,16 @@ DB_CONFIG = {
 def get_db_connection():
     return pymysql.connect(**DB_CONFIG)
 
-# 공통 헤더: VPC 1의 Nginx가 서빙하는 style.css를 참조합니다.
+# 디자인 수정을 위해 CSS 경로를 전체 URL로 잡았습니다.
 HTML_HEAD = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SY & YS CLOUD SERVICE</title>
-    <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="https://www.sy99.cloud/style.css">
 </head>
 """
 
-# 공통 네비게이션 바: 모든 페이지 상단에 노출됩니다.
 NAV_BAR = """
 <nav class="navbar">
     <div class="navbar-container">
@@ -129,17 +126,64 @@ async def view_page(id: int):
                 }}
             }}
 
+            // 수정 로직을 실제 페이지 이동으로 변경했습니다.
             function editPost(postId) {{
-                const pw = prompt("비밀번호를 입력하세요.");
+                const pw = prompt("수정하려면 비밀번호를 입력하세요.");
                 if(pw) {{
-                    alert("비밀번호 확인 완료! 수정 기능을 준비 중입니다.");
+                    location.href=`/board/edit?id=${{postId}}&password=${{pw}}`;
                 }}
             }}
         </script>
     </body></html>
     """
 
-# 4. 저장 로직 (POST)
+# 4. 수정 화면 (GET) - 새로 추가됨!
+@app.get("/board/edit", response_class=HTMLResponse)
+async def edit_page(id: int, password: str):
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT * FROM posts WHERE id = %s", (id,))
+            post = cursor.fetchone()
+    finally: conn.close()
+
+    if not post:
+        return "글을 찾을 수 없습니다."
+    
+    if post['password'] != password:
+        return "<script>alert('비밀번호가 틀렸습니다!'); history.back();</script>"
+
+    return f"""
+    <html>{HTML_HEAD}<body>{NAV_BAR}
+        <div class="content-card">
+            <h2>✏️ 글 수정하기</h2>
+            <form action="/board/edit" method="post">
+                <input type="hidden" name="id" value="{id}">
+                <input type="hidden" name="original_password" value="{password}">
+                <input type="text" name="title" value="{post['title']}" required>
+                <textarea name="content" rows="10" required>{post['content']}</textarea>
+                <p style="font-size: 0.8rem; color: #666;">* 비밀번호는 수정할 수 없습니다.</p>
+                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 15px;">수정 완료</button>
+            </form>
+            <a href="/board/view?id={id}" class="btn btn-secondary" style="margin-top: 10px; width: 100%; text-align: center;">취소</a>
+        </div>
+    </body></html>
+    """
+
+# 5. 수정 처리 (POST) - 새로 추가됨!
+@app.post("/board/edit")
+async def do_edit(id: int = Form(...), title: str = Form(...), content: str = Form(...), original_password: str = Form(...)):
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            # 보안을 위해 비밀번호 재확인 후 업데이트합니다.
+            cursor.execute("UPDATE posts SET title=%s, content=%s WHERE id=%s AND password=%s", 
+                           (title, content, id, original_password))
+        conn.commit()
+    finally: conn.close()
+    return HTMLResponse(f"<script>alert('수정되었습니다!'); location.href='/board/view?id={id}';</script>")
+
+# 6. 저장 로직 (POST)
 @app.post("/board/write")
 async def do_write(title: str = Form(...), content: str = Form(...), password: str = Form(...)):
     conn = get_db_connection()
@@ -150,7 +194,7 @@ async def do_write(title: str = Form(...), content: str = Form(...), password: s
     finally: conn.close()
     return HTMLResponse("<script>alert('게시글이 등록되었습니다!'); location.href='/board/list';</script>")
 
-# 5. 삭제 로직 (DELETE)
+# 7. 삭제 로직 (DELETE)
 @app.delete("/board/delete")
 async def do_delete(id: int, password: str):
     conn = get_db_connection()
