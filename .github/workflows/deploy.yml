@@ -71,10 +71,10 @@ jobs:
           sed -i "s|:latest|:${{ github.sha }}|g" k8s/deployment-svc.yaml
 
       # # 5. GitOps 배포: 수정된 파일을 다시 Push (ArgoCD가 이걸 보고 배포함)
-      # - name: Commit and Push to Git
-      #   run: |
-      #     git config --global user.name "github-actions[bot]"
-      #     git config --global user.email "github-actions[bot]@users.noreply.github.com"
-      #     git add k8s/deployment-svc.yaml
-      #     git commit -m "chore: update deployment manifests for GitOps [skip ci]"
-      #     git push
+      - name: Commit and Push to Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add k8s/deployment-svc.yaml
+          git commit -m "chore: update deployment manifests for GitOps [skip ci]"
+          git push
